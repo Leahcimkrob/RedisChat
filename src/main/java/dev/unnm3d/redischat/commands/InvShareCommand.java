@@ -14,8 +14,7 @@ import org.bukkit.inventory.meta.BlockStateMeta;
 import org.jetbrains.annotations.NotNull;
 import xyz.xenondevs.invui.gui.Gui;
 import xyz.xenondevs.invui.item.Item;
-import xyz.xenondevs.invui.item.builder.ItemBuilder;
-import xyz.xenondevs.invui.item.impl.SimpleItem;
+import xyz.xenondevs.invui.item.ItemBuilder;
 import xyz.xenondevs.invui.window.Window;
 
 import java.util.Arrays;
@@ -101,26 +100,34 @@ public class InvShareCommand implements CommandExecutor {
                     if (itemStack == null) return new ItemBuilder(Material.AIR);
                     return new ItemBuilder(itemStack);
                 })
-                .map(SimpleItem::new)
+                .map(Item::simple)
                 .toArray(Item[]::new)
         );
-        Window.single().setTitle(title).setGui(gui).setCloseHandlers(List.of(() -> new UniversalRunnable() {
-            @Override
-            public void run() {
-                player.updateInventory();
-            }
-        }.runTaskLater(plugin, 1))).open(player);
+        Window.builder()
+                .setTitle(title)
+                .setLowerGui(gui)
+                .addCloseHandler(reason -> new UniversalRunnable() {
+                    @Override
+                    public void run() {
+                        player.updateInventory();
+                    }
+                }.runTaskLater(plugin, 1))
+                .open(player);
     }
 
     private void openInvShareGuiItem(Player player, String title, ItemStack item) {
         Gui gui = Gui.empty(9, 3);
-        gui.setItem(13, new SimpleItem(item));
-        Window.single().setTitle(title).setGui(gui).setCloseHandlers(List.of(() -> new UniversalRunnable() {
-            @Override
-            public void run() {
-                player.updateInventory();
-            }
-        }.runTaskLater(plugin, 1))).open(player);
+        gui.setItem(13, Item.simple(item));
+        Window.builder()
+                .setTitle(title)
+                .setLowerGui(gui)
+                .addCloseHandler(reason -> new UniversalRunnable() {
+                    @Override
+                    public void run() {
+                        player.updateInventory();
+                    }
+                }.runTaskLater(plugin, 1))
+                .open(player);
     }
 
     public enum InventoryType {

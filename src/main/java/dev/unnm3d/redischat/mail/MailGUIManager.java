@@ -5,16 +5,14 @@ import dev.unnm3d.redischat.api.events.*;
 import lombok.Getter;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.ClickType;
-import org.bukkit.event.inventory.InventoryClickEvent;
 import org.jetbrains.annotations.NotNull;
+import xyz.xenondevs.invui.item.BoundItem;
 import xyz.xenondevs.invui.gui.Gui;
+import xyz.xenondevs.invui.gui.Markers;
 import xyz.xenondevs.invui.gui.PagedGui;
-import xyz.xenondevs.invui.gui.structure.Markers;
 import xyz.xenondevs.invui.item.Item;
 import xyz.xenondevs.invui.item.ItemProvider;
-import xyz.xenondevs.invui.item.builder.ItemBuilder;
-import xyz.xenondevs.invui.item.impl.controlitem.ControlItem;
-import xyz.xenondevs.invui.item.impl.controlitem.PageItem;
+import xyz.xenondevs.invui.item.ItemBuilder;
 import xyz.xenondevs.invui.window.Window;
 
 import java.util.List;
@@ -229,9 +227,9 @@ public class MailGUIManager {
                 .thenAccept(list -> {
                             Gui global = getMailGui(list);
                             RedisChat.getScheduler().runTask(() ->
-                                    Window.single()
+                                    Window.builder()
                                             .setTitle(plugin.guiSettings.publicMailTabTitle)
-                                            .setGui(global)
+                                            .setLowerGui(global)
                                             .open(player));
                         }
                 );
@@ -247,9 +245,9 @@ public class MailGUIManager {
                 .thenAccept(list -> {
                             Gui global = getMailGui(list);
                             RedisChat.getScheduler().runTask(() ->
-                                    Window.single()
+                                    Window.builder()
                                             .setTitle(plugin.guiSettings.privateMailTabTitle)
-                                            .setGui(global)
+                                            .setLowerGui(global)
                                             .open(player));
                         }
                 );
@@ -263,104 +261,79 @@ public class MailGUIManager {
      */
     public void openMailOptionsGui(@NotNull Player player, @NotNull Mail mail) {
         RedisChat.getScheduler().runTask(() ->
-                Window.single()
+                Window.builder()
                         .setTitle(plugin.guiSettings.mailOptionsTitle)
-                        .setGui(getMailOptionsGui(mail))
+                        .setLowerGui(getMailOptionsGui(mail))
                         .open(player));
     }
 
     private Gui getMailGui(List<Mail> list) {
-        return PagedGui.items()
+        return PagedGui.itemsBuilder()
                 .setStructure(
                         plugin.guiSettings.mailGUIStructure.toArray(new String[0])
                 )
                 .addIngredient('x', Markers.CONTENT_LIST_SLOT_HORIZONTAL) // where paged items should be put
-                .addIngredient('<', new PageItem(false) {
-                    @Override
-                    public ItemProvider getItemProvider(PagedGui<?> gui) {
-                        return new ItemBuilder(plugin.guiSettings.backButton);
-                    }
-                })
-                .addIngredient('>', new PageItem(true) {
-                    @Override
-                    public ItemProvider getItemProvider(PagedGui<?> gui) {
-                        return new ItemBuilder(plugin.guiSettings.forwardButton);
-                    }
-                })
-                .addIngredient('P', new ControlItem<>() {
-                    @Override
-                    public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent event) {
-                        event.setCancelled(true);
-                        player.closeInventory();
-                        openPublicMailGui(player);
-                    }
-
-                    @Override
-                    public ItemProvider getItemProvider(Gui gui) {
-                        return new ItemBuilder(plugin.guiSettings.PublicButton);
-                    }
-                })
-                .addIngredient('p', new ControlItem<>() {
-                    @Override
-                    public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent event) {
-                        event.setCancelled(true);
-                        player.closeInventory();
-                        openPrivateMailGui(player);
-                    }
-
-                    @Override
-                    public ItemProvider getItemProvider(Gui gui) {
-                        return new ItemBuilder(plugin.guiSettings.privateButton);
-                    }
-                })
+                .addIngredient('<', BoundItem.pagedBuilder()
+                        .setItemProvider((viewer, gui) -> new ItemBuilder(plugin.guiSettings.backButton))
+                        .addClickHandler((item, gui, click) -> gui.setPage(Math.max(0, gui.getPage() - 1)))
+                        .build())
+                .addIngredient('>', BoundItem.pagedBuilder()
+                        .setItemProvider((viewer, gui) -> new ItemBuilder(plugin.guiSettings.forwardButton))
+                        .addClickHandler((item, gui, click) -> gui.setPage(Math.min(gui.getPageCount() - 1, gui.getPage() + 1)))
+                        .build())
+                .addIngredient('P', Item.builder()
+                        .setItemProvider(new ItemBuilder(plugin.guiSettings.PublicButton))
+                        .addClickHandler((item, click) -> {
+                            click.player().closeInventory();
+                            openPublicMailGui(click.player());
+                        })
+                        .build())
+                .addIngredient('p', Item.builder()
+                        .setItemProvider(new ItemBuilder(plugin.guiSettings.privateButton))
+                        .addClickHandler((item, click) -> {
+                            click.player().closeInventory();
+                            openPrivateMailGui(click.player());
+                        })
+                        .build())
                 .setContent(list.stream().map(mail -> (Item) mail).toList())
                 .build();
     }
 
     private Gui getMailOptionsGui(Mail mail) {
-        return Gui.normal()
+        return Gui.builder()
                 .setStructure(
                         plugin.guiSettings.mailSettingsGUIStructure.toArray(new String[0])
                 )
-                .addIngredient('D', new ControlItem<>() {
-                    @Override
-                    public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent event) {
-                        event.setCancelled(true);
-                        deleteMail(mail, player).thenAccept(success -> {
-                            plugin.messages.sendMessage(player, plugin.messages.mailDeleted.replace("%title%", mail.getTitle()));
-                            if (mail.getCategory().equals(Mail.MailCategory.PUBLIC)) {
-                                openPublicMailGui(player);
-                            } else {
-                                openPrivateMailGui(player);
-                            }
-                        });
-                    }
+                .addIngredient('D', Item.builder()
+                        .setItemProvider(new ItemBuilder(plugin.guiSettings.deleteButton))
+                        .addClickHandler((item, click) -> {
+                            Player player = click.player();
+                            deleteMail(mail, player).thenAccept(success -> {
+                                plugin.messages.sendMessage(player, plugin.messages.mailDeleted.replace("%title%", mail.getTitle()));
+                                if (mail.getCategory().equals(Mail.MailCategory.PUBLIC)) {
+                                    openPublicMailGui(player);
+                                } else {
+                                    openPrivateMailGui(player);
+                                }
+                            });
+                        })
+                        .build())
+                .addIngredient('U', Item.builder()
+                        .setItemProvider(new ItemBuilder(plugin.guiSettings.unreadButton))
+                        .addClickHandler((item, click) -> {
+                            Player player = click.player();
+                            readMail(mail, player, false).thenAccept(success -> {
+                                plugin.messages.sendMessage(player, plugin.messages.mailUnRead.replace("%title%", mail.getTitle()));
 
-                    @Override
-                    public ItemProvider getItemProvider(Gui gui) {
-                        return new ItemBuilder(plugin.guiSettings.deleteButton);
-                    }
-                })
-                .addIngredient('U', new ControlItem<>() {
-                    @Override
-                    public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent event) {
-                        event.setCancelled(true);
-                        readMail(mail, player, false).thenAccept(success -> {
-                            plugin.messages.sendMessage(player, plugin.messages.mailUnRead.replace("%title%", mail.getTitle()));
-
-                            if (mail.getCategory().equals(Mail.MailCategory.PUBLIC)) {
-                                openPublicMailGui(player);
-                            } else {
-                                openPrivateMailGui(player);
-                            }
-                        });
-                    }
-
-                    @Override
-                    public ItemProvider getItemProvider(Gui gui) {
-                        return new ItemBuilder(plugin.guiSettings.unreadButton);
-                    }
-                }).build();
+                                if (mail.getCategory().equals(Mail.MailCategory.PUBLIC)) {
+                                    openPublicMailGui(player);
+                                } else {
+                                    openPrivateMailGui(player);
+                                }
+                            });
+                        })
+                        .build())
+                .build();
     }
 
 

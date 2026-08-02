@@ -7,8 +7,8 @@ import org.bukkit.enchantments.Enchantment;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import xyz.xenondevs.invui.gui.structure.Structure;
-import xyz.xenondevs.invui.item.builder.ItemBuilder;
+import xyz.xenondevs.invui.gui.Structure;
+import xyz.xenondevs.invui.item.ItemBuilder;
 
 import java.lang.reflect.Field;
 import java.util.List;
@@ -20,23 +20,23 @@ public final class GuiSettings implements ConfigValidator {
     public List<String> chatColorGUIStructure = List.of(
             "1 2 3 4 5 6 7 8 9",
             "a b c d e f r x x");
-    public ItemStack colorBlack = new ItemBuilder(Material.BLACK_DYE).setDisplayName("§0Black").get();
-    public ItemStack colorDarkBlue = new ItemBuilder(Material.BLUE_DYE).setDisplayName("§1Dark Blue").get();
-    public ItemStack colorDarkGreen = new ItemBuilder(Material.GREEN_DYE).setDisplayName("§2Dark Green").get();
-    public ItemStack colorDarkAqua = new ItemBuilder(Material.CYAN_DYE).setDisplayName("§3Dark Aqua").get();
-    public ItemStack colorDarkRed = new ItemBuilder(Material.RED_DYE).setDisplayName("§4Dark Red").get();
-    public ItemStack colorDarkPurple = new ItemBuilder(Material.PURPLE_DYE).setDisplayName("§5Dark Purple").get();
-    public ItemStack colorGold = new ItemBuilder(Material.GOLD_NUGGET).setDisplayName("§6Gold").get();
-    public ItemStack colorGray = new ItemBuilder(Material.LIGHT_GRAY_DYE).setDisplayName("§7Gray").get();
-    public ItemStack colorDarkGray = new ItemBuilder(Material.GRAY_DYE).setDisplayName("§8Dark Gray").get();
-    public ItemStack colorBlue = new ItemBuilder(Material.LIGHT_BLUE_DYE).setDisplayName("§9Blue").get();
-    public ItemStack colorGreen = new ItemBuilder(Material.LIME_DYE).setDisplayName("§aGreen").get();
-    public ItemStack colorAqua = new ItemBuilder(Material.LIGHT_BLUE_DYE).setDisplayName("§bAqua").get();
-    public ItemStack colorRed = new ItemBuilder(Material.RED_DYE).setDisplayName("§cRed").get();
-    public ItemStack colorLightPurple = new ItemBuilder(Material.PINK_DYE).setDisplayName("§dLight Purple").get();
-    public ItemStack colorYellow = new ItemBuilder(Material.YELLOW_DYE).setDisplayName("§eYellow").get();
-    public ItemStack colorWhite = new ItemBuilder(Material.WHITE_DYE).setDisplayName("§fWhite").get();
-    public ItemStack colorReset = new ItemBuilder(Material.BARRIER).setDisplayName("§fReset").get();
+    public ItemStack colorBlack = new ItemBuilder(Material.BLACK_DYE).setLegacyName("§0Black").get();
+    public ItemStack colorDarkBlue = new ItemBuilder(Material.BLUE_DYE).setLegacyName("§1Dark Blue").get();
+    public ItemStack colorDarkGreen = new ItemBuilder(Material.GREEN_DYE).setLegacyName("§2Dark Green").get();
+    public ItemStack colorDarkAqua = new ItemBuilder(Material.CYAN_DYE).setLegacyName("§3Dark Aqua").get();
+    public ItemStack colorDarkRed = new ItemBuilder(Material.RED_DYE).setLegacyName("§4Dark Red").get();
+    public ItemStack colorDarkPurple = new ItemBuilder(Material.PURPLE_DYE).setLegacyName("§5Dark Purple").get();
+    public ItemStack colorGold = new ItemBuilder(Material.GOLD_NUGGET).setLegacyName("§6Gold").get();
+    public ItemStack colorGray = new ItemBuilder(Material.LIGHT_GRAY_DYE).setLegacyName("§7Gray").get();
+    public ItemStack colorDarkGray = new ItemBuilder(Material.GRAY_DYE).setLegacyName("§8Dark Gray").get();
+    public ItemStack colorBlue = new ItemBuilder(Material.LIGHT_BLUE_DYE).setLegacyName("§9Blue").get();
+    public ItemStack colorGreen = new ItemBuilder(Material.LIME_DYE).setLegacyName("§aGreen").get();
+    public ItemStack colorAqua = new ItemBuilder(Material.LIGHT_BLUE_DYE).setLegacyName("§bAqua").get();
+    public ItemStack colorRed = new ItemBuilder(Material.RED_DYE).setLegacyName("§cRed").get();
+    public ItemStack colorLightPurple = new ItemBuilder(Material.PINK_DYE).setLegacyName("§dLight Purple").get();
+    public ItemStack colorYellow = new ItemBuilder(Material.YELLOW_DYE).setLegacyName("§eYellow").get();
+    public ItemStack colorWhite = new ItemBuilder(Material.WHITE_DYE).setLegacyName("§fWhite").get();
+    public ItemStack colorReset = new ItemBuilder(Material.BARRIER).setLegacyName("§fReset").get();
 
     public String publicMailTabTitle = "Public Mail";
     public String privateMailTabTitle = "Private Mail";
@@ -182,18 +182,21 @@ public final class GuiSettings implements ConfigValidator {
 
     private ItemStack getDeleteButton() {
         return new ItemBuilder(Material.BARRIER)
-                .setDisplayName("§cDelete mail")
+                .setLegacyName("§cDelete mail")
                 .setLegacyLore(List.of("§7Click to delete the mail"))
                 .get();
     }
 
     private ItemStack getUnreadButton() {
-        return new ItemBuilder(Material.BOOK)
-                .addEnchantment(Enchantment.DEPTH_STRIDER, 1, false)
-                .addItemFlags(ItemFlag.HIDE_ENCHANTS)
-                .setDisplayName("§cUnread mail")
-                .setLegacyLore(List.of("§7Click to set the mail as unread"))
-                .get();
+        ItemStack item = new ItemStack(Material.BOOK);
+        item.addUnsafeEnchantment(Enchantment.DEPTH_STRIDER, 1);
+        ItemMeta meta = item.getItemMeta();
+        if (meta == null) return item;
+        meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+        meta.setDisplayName("§cUnread mail");
+        meta.setLore(List.of("§7Click to set the mail as unread"));
+        item.setItemMeta(meta);
+        return item;
     }
 
     public void setIngredient(String key, ItemStack item) {

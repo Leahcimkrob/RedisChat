@@ -3,43 +3,44 @@ package dev.unnm3d.redischat.chat;
 import dev.unnm3d.redischat.Permissions;
 import dev.unnm3d.redischat.RedisChat;
 import org.bukkit.ChatColor;
-import org.bukkit.entity.Player;
-import org.bukkit.event.inventory.ClickType;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import xyz.xenondevs.invui.gui.AbstractGui;
+import xyz.xenondevs.invui.gui.Gui;
+import xyz.xenondevs.invui.item.Item;
+import xyz.xenondevs.invui.item.ItemBuilder;
 
-public class ChatColorGUI extends AbstractGui {
-    private final RedisChat plugin;
-
-    public ChatColorGUI(RedisChat plugin) {
-        super(9, plugin.guiSettings.chatColorGUIStructure.size());
-        this.plugin = plugin;
-        this.applyStructure(plugin.guiSettings.getChatColorGUIStructure());
+public final class ChatColorGUI {
+    private ChatColorGUI() {
     }
 
-    @Override
-    public void handleClick(int slotNumber, Player player, ClickType clickType, InventoryClickEvent event) {
-        super.handleClick(slotNumber, player, clickType, event);
-        player.closeInventory();
-
+    public static Gui create(RedisChat plugin) {
+        Gui gui = Gui.of(plugin.guiSettings.getChatColorGUIStructure());
         StringBuilder sb = new StringBuilder();
         plugin.guiSettings.chatColorGUIStructure.forEach(row -> sb.append(row.replace(" ", "")));
 
-        char slotChar = sb.toString().charAt(slotNumber);
-        final ChatColor color = ChatColor.getByChar(slotChar);
-        if (color == null) {
-            plugin.messages.sendMessage(player, plugin.messages.invalid_color);
-            return;
+        for (int slot = 0; slot < sb.length(); slot++) {
+            char slotChar = sb.charAt(slot);
+            ChatColor color = ChatColor.getByChar(slotChar);
+            if (color == null) continue;
+            final int finalSlot = slot;
+            gui.setItem(finalSlot, Item.builder()
+                    .setItemProvider(player -> new ItemBuilder(gui.getItem(finalSlot).getItemProvider(player).get()))
+                    .addClickHandler((item, click) -> {
+                        click.player().closeInventory();
+                        applyColor(plugin, click.player().getName(), color, click.player().hasPermission(Permissions.CHAT_COLOR.getPermission() + "." + color.name().toLowerCase()), click.player());
+                    })
+                    .build());
         }
-        if (color == ChatColor.RESET) {
-            plugin.getPlaceholderManager().removePlayerPlaceholder(player.getName(), "chat_color");
-        } else if (player.hasPermission(Permissions.CHAT_COLOR.getPermission() + "." + color.name().toLowerCase())) {
-            plugin.getPlaceholderManager().addPlayerPlaceholder(player.getName(), "chat_color", "<" + color.name().toLowerCase() + ">");
-        } else {
-            this.plugin.messages.sendMessage(player, this.plugin.messages.noPermission);
-            return;
-        }
+        return gui;
+    }
 
+    private static void applyColor(RedisChat plugin, String playerName, ChatColor color, boolean hasPermission, org.bukkit.entity.Player player) {
+        if (color == ChatColor.RESET) {
+            plugin.getPlaceholderManager().removePlayerPlaceholder(playerName, "chat_color");
+        } else if (hasPermission) {
+            plugin.getPlaceholderManager().addPlayerPlaceholder(playerName, "chat_color", "<" + color.name().toLowerCase() + ">");
+        } else {
+            plugin.messages.sendMessage(player, plugin.messages.noPermission);
+            return;
+        }
         plugin.messages.sendMessage(player, plugin.messages.color_set);
     }
 }

@@ -8,13 +8,12 @@ import lombok.AllArgsConstructor;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import xyz.xenondevs.invui.item.BoundItem;
 import xyz.xenondevs.invui.gui.Gui;
+import xyz.xenondevs.invui.gui.Markers;
 import xyz.xenondevs.invui.gui.PagedGui;
-import xyz.xenondevs.invui.gui.structure.Markers;
 import xyz.xenondevs.invui.item.Item;
-import xyz.xenondevs.invui.item.ItemProvider;
-import xyz.xenondevs.invui.item.builder.ItemBuilder;
-import xyz.xenondevs.invui.item.impl.controlitem.PageItem;
+import xyz.xenondevs.invui.item.ItemBuilder;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -35,22 +34,18 @@ public class ChannelGUI {
         final ChannelGuiPopulateEvent populateEvent = new ChannelGuiPopulateEvent(player, items);
         plugin.getServer().getPluginManager().callEvent(populateEvent);
 
-        return PagedGui.items()
+        return PagedGui.itemsBuilder()
                 .setStructure(
                         plugin.guiSettings.channelGUIStructure.toArray(new String[0]))
                 .addIngredient('x', Markers.CONTENT_LIST_SLOT_HORIZONTAL) // where paged items should be put
-                .addIngredient('<', new PageItem(false) {
-                    @Override
-                    public ItemProvider getItemProvider(PagedGui<?> gui) {
-                        return new ItemBuilder(plugin.guiSettings.backButton);
-                    }
-                })
-                .addIngredient('>', new PageItem(true) {
-                    @Override
-                    public ItemProvider getItemProvider(PagedGui<?> gui) {
-                        return new ItemBuilder(plugin.guiSettings.forwardButton);
-                    }
-                })
+                .addIngredient('<', BoundItem.pagedBuilder()
+                        .setItemProvider((viewer, gui) -> new ItemBuilder(plugin.guiSettings.backButton))
+                        .addClickHandler((item, gui, click) -> gui.setPage(Math.max(0, gui.getPage() - 1)))
+                        .build())
+                .addIngredient('>', BoundItem.pagedBuilder()
+                        .setItemProvider((viewer, gui) -> new ItemBuilder(plugin.guiSettings.forwardButton))
+                        .addClickHandler((item, gui, click) -> gui.setPage(Math.min(gui.getPageCount() - 1, gui.getPage() + 1)))
+                        .build())
                 .addIngredient('G', new GlobalChannel(
                         plugin.getChannelManager().getPublicChannel(null),
                         player,
